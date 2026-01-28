@@ -1,18 +1,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import os from "node:os";
 
 /**
- * Sync local desktop folder into Vite public dir so the frontend can fetch it.
- * Source (macOS): ~/Desktop/essay sample
- * Target: <repo>/public/essay-sample
+ * Generate / refresh index.json for existing sample files in Vite public dir.
+ * Source & Target: <repo>/public/essay-sample
  *
  * Also generates <target>/index.json to drive the UI.
  */
 
 const repoRoot = path.resolve(process.cwd());
-const sourceDir = path.join(os.homedir(), "Desktop", "essay sample");
-const targetDir = path.join(repoRoot, "public", "essay-sample");
+const sourceDir = path.join(repoRoot, "public", "essay-sample");
+const targetDir = sourceDir;
 
 const ALLOWED_EXT = new Set([
   ".md",
@@ -66,35 +64,37 @@ async function main() {
   if (!(await pathExists(sourceDir))) {
     console.warn(
       `[sync-essay-sample] Source folder not found: ${sourceDir}\n` +
-        `[sync-essay-sample] Skipping sync. Create the folder (or rename it) to enable local sample rendering.`,
+        `[sync-essay-sample] Skipping index generation. Create the folder (or copy sample files into it) to enable local sample rendering.`,
     );
     return;
   }
 
-  await ensureEmptyDir(targetDir);
-
   const files = await walk(sourceDir);
-  const copied = [];
+  const indexed = [];
 
   for (const absSrc of files) {
     const rel = path.relative(sourceDir, absSrc);
     const ext = path.extname(absSrc).toLowerCase();
+    const base = path.basename(rel);
+
+    // 跳过自身生成的 index.json
+    if (base === "index.json") continue;
+
     if (!ALLOWED_EXT.has(ext)) continue;
 
     const absDst = path.join(targetDir, rel);
     await fs.mkdir(path.dirname(absDst), { recursive: true });
-    await fs.copyFile(absSrc, absDst);
 
     const stat = await fs.stat(absSrc);
-    copied.push({
+    indexed.push({
       path: toPosix(rel),
       bytes: stat.size,
       ext,
-      name: path.basename(rel),
+      name: base,
     });
   }
 
-  copied.sort((a, b) => a.path.localeCompare(b.path));
+  indexed.sort((a, b) => a.path.localeCompare(b.path));
 
   await fs.writeFile(
     path.join(targetDir, "index.json"),
@@ -102,7 +102,7 @@ async function main() {
       {
         source: sourceDir,
         generatedAt: new Date().toISOString(),
-        files: copied,
+        files: indexed,
       },
       null,
       2,
@@ -110,7 +110,7 @@ async function main() {
     "utf8",
   );
 
-  console.log(`[sync-essay-sample] Copied ${copied.length} files -> public/essay-sample/`);
+  console.log(`[sync-essay-sample] Indexed ${indexed.length} files in public/essay-sample/`);
 }
 
 main().catch((err) => {

@@ -6,10 +6,10 @@
 
 1. 安装依赖：
    - `npm install`
-2. 启动开发服务器（会自动同步桌面样本数据）：
+2. 启动开发服务器：
    - `npm run dev`
 
 ## 样本数据说明
 
-- 页面“结果页”内容来自你桌面目录 `~/Desktop/essay sample/`
-- 启动/构建时会自动同步到 `public/essay-sample/`，前端通过 `fetch` 读取展示
+- **数据来源目录**：仓库内的 `public/essay-sample/`
+- **索引生成**：启动 / 构建时会运行 `scripts/sync-essay-sample.mjs`，根据该目录下的文件生成 `public/essay-sample/index.json`，前端通过 `fetch` 读取并展示
